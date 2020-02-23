@@ -3,7 +3,13 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct AuthorSummary {
+  person_id: i32,
+  last_name: String,
+  first_name: String,
+}
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Book {
   book_id: i32,
   pub title: String,
@@ -52,4 +58,5 @@ pub struct Book {
   html_encoding: String,
   html_charset: String,
   html_updated: i32,
+  authors: Vec<AuthorSummary>,
 }
