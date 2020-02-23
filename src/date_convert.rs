@@ -1,6 +1,6 @@
 use chrono::SecondsFormat;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use serde::de::{Deserializer, MapAccess, Visitor};
+use serde::de::{Deserializer, Error, MapAccess, Visitor};
 use serde::ser::Serializer;
 use std::collections::HashMap;
 use std::fmt;
@@ -23,13 +23,24 @@ pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
 where
   D: Deserializer<'de>,
 {
-  struct UtcDateTimeVisitor;
+  struct TheVisitor;
 
-  impl<'de> Visitor<'de> for UtcDateTimeVisitor {
+  impl<'de> Visitor<'de> for TheVisitor {
     type Value = DateTime<Utc>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-      formatter.write_str("format eror")
+      formatter.write_str("format error")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+      E: Error,
+    {
+      let format = "%Y-%m-%dT%H:%M:%SZ";
+      Ok(DateTime::<Utc>::from_utc(
+        NaiveDateTime::parse_from_str(v, &format).unwrap(),
+        Utc,
+      ))
     }
 
     fn visit_map<A>(self, map: A) -> Result<DateTime<Utc>, A::Error>
@@ -52,6 +63,5 @@ where
     }
   }
 
-  let datetime = deserializer.deserialize_struct("", &[], UtcDateTimeVisitor);
-  Ok(datetime.unwrap())
+  deserializer.deserialize_any(TheVisitor)
 }
