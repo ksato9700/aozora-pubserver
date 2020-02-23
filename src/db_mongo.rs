@@ -2,6 +2,7 @@ use bson::{bson, doc, Document};
 use mongodb::error::Result;
 use mongodb::options::FindOneOptions;
 use mongodb::{Client, Collection, Database};
+use std::env;
 
 use crate::book::Book;
 
@@ -12,8 +13,15 @@ pub struct DbClient {
 
 impl DbClient {
     pub fn new() -> Self {
+        let mongo_url = format!(
+            "mongodb://{}{}:{}/aozora",
+            env::var("AOZORA_MONGODB_CREDENTIAL").unwrap_or("".to_string()),
+            env::var("AOZORA_MONGODB_HOST").unwrap_or("localhost".to_string()),
+            env::var("AOZORA_MONGODB_PORT").unwrap_or("27017".to_string()),
+        );
+        // println!("mongo_url: {}", mongo_url);
         Self {
-            client: Client::with_uri_str("mongodb://localhost").unwrap(),
+            client: Client::with_uri_str(&mongo_url).unwrap(),
         }
     }
     pub fn _db(self) -> Database {
