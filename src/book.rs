@@ -1,4 +1,6 @@
 use crate::date_convert;
+use crate::db_mongo::DbClient;
+use actix_web::{web, HttpResponse, Responder};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -60,4 +62,26 @@ pub struct Book {
   html_updated: i32,
   revisers: Option<Vec<PersonSummary>>,
   authors: Vec<PersonSummary>,
+}
+
+pub async fn get_books() -> impl Responder {
+  HttpResponse::Ok().body("[{\"many\":\"books\"}]")
+}
+
+pub async fn get_book_by_id(book_id: web::Path<u32>) -> impl Responder {
+  let cl = DbClient::new();
+  match cl.find_one_book(*book_id) {
+    Ok(book) => match book {
+      Some(book) => HttpResponse::Ok().json(book),
+      None => HttpResponse::Ok().body("{}".to_string()),
+    },
+    Err(error) => {
+      println!("ERRROR: {:?}", error);
+      HttpResponse::InternalServerError().finish()
+    }
+  }
+}
+
+pub async fn get_book_card(_book_id: web::Path<u32>) -> impl Responder {
+  HttpResponse::NotImplemented().finish()
 }
