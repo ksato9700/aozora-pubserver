@@ -1,11 +1,12 @@
 use crate::date_convert;
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
+
 pub struct Book {
   book_id: i32,
-  title: String,
+  pub title: String,
   title_yomi: String,
   title_sort: String,
   subtitle: String,
