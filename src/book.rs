@@ -1,6 +1,6 @@
 use crate::date_convert;
 use crate::db_mongo::DbClient;
-use actix_web::{http, web, HttpResponse, Responder};
+use actix_web::{http, web, HttpRequest, HttpResponse, Responder};
 use chrono::{DateTime, Utc};
 use hex;
 use serde::{Deserialize, Serialize};
@@ -70,21 +70,34 @@ pub async fn get_books() -> impl Responder {
   HttpResponse::Ok().body("[{\"many\":\"books\"}]")
 }
 
-fn send_as_json<T: Serialize>(value: T) -> HttpResponse {
+fn send_as_json<T: Serialize>(value: T, if_none_match: &str) -> HttpResponse {
   match serde_json::to_string(&value) {
-    Ok(body) => HttpResponse::Ok()
-      .content_type("application/json; charset=utf-8")
-      .set_header(http::header::ETAG, hex::encode(md5::compute(&body).deref()))
-      .body(body),
+    Ok(body) => {
+      let etag = hex::encode(md5::compute(&body).deref());
+      if etag == if_none_match {
+        HttpResponse::NotModified()
+          .set_header(http::header::ETAG, etag)
+          .finish()
+      } else {
+        HttpResponse::Ok()
+          .content_type("application/json; charset=utf-8")
+          .set_header(http::header::ETAG, etag)
+          .body(body)
+      }
+    }
     Err(_err) => HttpResponse::InternalServerError().finish(),
   }
 }
 
-pub async fn get_book_by_id(book_id: web::Path<u32>) -> impl Responder {
+pub async fn get_book_by_id(req: HttpRequest, book_id: web::Path<u32>) -> impl Responder {
   let cl = DbClient::new();
+  let if_none_match = match req.headers().get(http::header::IF_NONE_MATCH) {
+    Some(value) => value.to_str().unwrap(),
+    None => "",
+  };
   match cl.find_one_book(*book_id) {
     Ok(book) => match book {
-      Some(book) => send_as_json(book),
+      Some(book) => send_as_json(book, if_none_match),
       None => HttpResponse::NotFound().finish(),
     },
     Err(error) => {
@@ -184,25 +197,12 @@ mod tests {
 
     // the 2nd attempt with if-none-match header
     let etag = res.headers().get(http::header::ETAG).unwrap();
-    println!("etag: {:?}", etag);
 
     let req = test::TestRequest::with_uri("/books/123")
       .header(http::header::IF_NONE_MATCH, etag.to_str().unwrap())
       .to_request();
     let res = test::call_service(&mut app, req).await;
-    println!("{:?}", res.status());
-
-    // assert_eq!(body, "");
-    // println!("{:?}", res.body());
-
-    // let body = res.take_body();
-    // println!("{:?}", body.as_ref().unwrap());
+    assert_eq!(res.status(), http::StatusCode::NOT_MODIFIED);
+    assert!(res.headers().get(http::header::CONTENT_TYPE).is_none());
   }
-
-  // #[actix_rt::test]
-  // async fn test_index_not_ok() {
-  //   let req = test::TestRequest::default().to_http_request();
-  //   let resp = index(req).await;
-  //   assert_eq!(resp.status(), http::StatusCode::BAD_REQUEST);
-  // }
 }
