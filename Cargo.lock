@@ -288,7 +288,9 @@ dependencies = [
  "chrono",
  "dotenv",
  "env_logger",
+ "hex 0.4.2",
  "log",
+ "md5 0.7.0",
  "mongodb",
  "serde",
  "serde_json",
@@ -462,7 +464,7 @@ dependencies = [
  "hex 0.3.2",
  "libc",
  "linked-hash-map",
- "md5",
+ "md5 0.6.1",
  "rand 0.7.3",
  "serde",
  "serde_json",
@@ -971,9 +973,9 @@ checksum = "805026a5d0141ffc30abb3be3173848ad46a1b1664fe632428479619a3644d77"
 
 [[package]]
 name = "hex"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76cdda6bf525062a0c9e8f14ee2b37935c86b8efb6c8b69b3c83dfb518a914af"
+checksum = "644f9158b2f133fd50f5fb3242878846d9eb792e445c893805ff0e3824006e35"
 
 [[package]]
 name = "hmac"
@@ -1168,6 +1170,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e6bcd6433cff03a4bfc3d9834d504467db1f1cf6d0ea765d37d330249ed629d"
 
 [[package]]
+name = "md5"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
+
+[[package]]
 name = "memchr"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1252,7 +1260,7 @@ dependencies = [
  "chrono",
  "derivative",
  "err-derive",
- "hex 0.4.1",
+ "hex 0.4.2",
  "hmac",
  "lazy_static",
  "md-5",

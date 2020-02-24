@@ -1,8 +1,10 @@
 use crate::date_convert;
 use crate::db_mongo::DbClient;
-use actix_web::{web, HttpResponse, Responder};
-use chrono::{DateTime, NaiveDateTime, Utc};
+use actix_web::{http, web, HttpResponse, Responder};
+use chrono::{DateTime, Utc};
+use hex;
 use serde::{Deserialize, Serialize};
+use std::ops::Deref;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct PersonSummary {
@@ -68,12 +70,22 @@ pub async fn get_books() -> impl Responder {
   HttpResponse::Ok().body("[{\"many\":\"books\"}]")
 }
 
+fn send_as_json<T: Serialize>(value: T) -> HttpResponse {
+  match serde_json::to_string(&value) {
+    Ok(body) => HttpResponse::Ok()
+      .content_type("application/json; charset=utf-8")
+      .set_header(http::header::ETAG, hex::encode(md5::compute(&body).deref()))
+      .body(body),
+    Err(_err) => HttpResponse::InternalServerError().finish(),
+  }
+}
+
 pub async fn get_book_by_id(book_id: web::Path<u32>) -> impl Responder {
   let cl = DbClient::new();
   match cl.find_one_book(*book_id) {
     Ok(book) => match book {
-      Some(book) => HttpResponse::Ok().json(book),
-      None => HttpResponse::Ok().body("{}".to_string()),
+      Some(book) => send_as_json(book),
+      None => HttpResponse::NotFound().finish(),
     },
     Err(error) => {
       println!("ERRROR: {:?}", error);
@@ -91,6 +103,7 @@ mod tests {
   use super::*;
   use actix_web::test;
   use actix_web::{body, App};
+  use chrono::NaiveDateTime;
   use serde_json::from_slice;
 
   fn str_to_utc(v: &str) -> DateTime<Utc> {
@@ -102,12 +115,14 @@ mod tests {
   async fn test_single_book_ok() {
     let mut app =
       test::init_service(App::new().route("/books/{book_id}", web::get().to(get_book_by_id))).await;
+
+    // the 1st attempt
     let req = test::TestRequest::with_uri("/books/123").to_request();
     let res = test::call_service(&mut app, req).await;
     assert!(res.status().is_success());
 
-    let content_type = res.headers().get("content-type".to_string()).unwrap();
-    assert_eq!(content_type, "application/json");
+    let content_type = res.headers().get(http::header::CONTENT_TYPE).unwrap();
+    assert_eq!(content_type, "application/json; charset=utf-8");
 
     let expected = Book {
       book_id: 123,
@@ -166,6 +181,16 @@ mod tests {
       }
       _ => panic!("Response error"),
     };
+
+    // the 2nd attempt with if-none-match header
+    let etag = res.headers().get(http::header::ETAG).unwrap();
+    println!("etag: {:?}", etag);
+
+    let req = test::TestRequest::with_uri("/books/123")
+      .header(http::header::IF_NONE_MATCH, etag.to_str().unwrap())
+      .to_request();
+    let res = test::call_service(&mut app, req).await;
+    println!("{:?}", res.status());
 
     // assert_eq!(body, "");
     // println!("{:?}", res.body());
